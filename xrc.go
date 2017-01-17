@@ -12,14 +12,11 @@ import (
 	"text/template"
 )
 
-var pfile = flag.String("p", "", "path to palette file")
-
-func errh(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "xrc: %s\n", err)
-		os.Exit(1)
-	}
-}
+var (
+	pfile = flag.String("p", "", "path to palette file")
+	left  = flag.String("dl", "{{", "left delimiter")
+	right = flag.String("dr", "}}", "right delimiter")
+)
 
 var colors = [9]struct{ hi, lo string }{
 	{"black", "lblack"},
@@ -62,6 +59,13 @@ func x(c co) string {
 
 var funcs = map[string]interface{}{"r": hex, "x": x}
 
+func errh(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "xrc: %s\n", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
 	flag.Parse()
 	if *pfile == "" {
@@ -71,15 +75,17 @@ func main() {
 	errh(err)
 	img, _, err := image.Decode(rd)
 	errh(err)
-	b, err := ioutil.ReadAll(os.Stdin)
-	errh(err)
-	t, err := template.New("aaaa").Funcs(funcs).Parse(string(b))
-	errh(err)
 	var colorMap = make(map[string]co)
 	for i, c := range colors {
 		hi, lo := co{img.At(i*2+1, 1)}, co{img.At(i*2+1, 3)}
 		colorMap[c.hi] = hi
 		colorMap[c.lo] = lo
 	}
-	errh(t.Funcs(funcs).Execute(os.Stdout, colorMap))
+	b, err := ioutil.ReadAll(os.Stdin)
+	errh(err)
+	t, err := template.New("aaaa").
+		Delims(*left, *right).
+		Funcs(funcs).Parse(string(b))
+	errh(err)
+	errh(t.Execute(os.Stdout, colorMap))
 }
