@@ -12,7 +12,6 @@ import (
 	"text/template"
 )
 
-var tfile = flag.String("t", "", "path to template file")
 var pfile = flag.String("p", "", "path to palette file")
 
 func errh(err error) {
@@ -61,33 +60,26 @@ func x(c co) string {
 	return "0x" + hex(c)
 }
 
-var funcs = map[string]interface{}{
-	"r": hex,
-	"x": x,
-}
+var funcs = map[string]interface{}{"r": hex, "x": x}
 
 func main() {
 	flag.Parse()
 	if *pfile == "" {
 		errh(errors.New("missing palette file"))
 	}
-	if *tfile == "" {
-		errh(errors.New("missing template file"))
-	}
 	rd, err := os.Open(*pfile)
 	errh(err)
 	img, _, err := image.Decode(rd)
 	errh(err)
-	b, err := ioutil.ReadFile(*tfile)
+	b, err := ioutil.ReadAll(os.Stdin)
 	errh(err)
 	t, err := template.New("aaaa").Funcs(funcs).Parse(string(b))
 	errh(err)
-	t = t.Funcs(funcs)
 	var colorMap = make(map[string]co)
 	for i, c := range colors {
 		hi, lo := co{img.At(i*2+1, 1)}, co{img.At(i*2+1, 3)}
 		colorMap[c.hi] = hi
 		colorMap[c.lo] = lo
 	}
-	errh(t.Execute(os.Stdout, colorMap))
+	errh(t.Funcs(funcs).Execute(os.Stdout, colorMap))
 }
